@@ -15,8 +15,9 @@ export const HITBOXES = {
 // Points for gifts
 export const GIFT_POINTS = {
   small: 10,
-  medium: 30,
-  large: 50
+  medium: 20,
+  large: 30,
+  bonus: 40  // Extra large or special
 } as const;
 
 // Booster configuration
@@ -52,4 +53,23 @@ export const SPAWN_CONFIG = {
   step: 150,        // Pixels between spawn waves
   laneCount: 5,     // Number of lanes
   spawnBuffer: 100  // Pixels below camera to spawn
+} as const;
+
+// Player physics (angle-based movement)
+export const PLAYER_PHYSICS = {
+  maxAngle: Math.PI / 4,        // ~45 degrees max turn angle
+  angleChangeSpeed: 1.2,        // Radians per second when turning
+  angleSmoothness: 0.08,        // Lerp factor for smooth interpolation
+  visualTiltFactor: 0.6         // Multiplier for sprite rotation
+} as const;
+
+// Camera configuration
+export const CAMERA_CONFIG = {
+  initialZoom: 1.5,             // Zoom at game start (closer)
+  gameZoom: 1.4,                // Zoom after countdown (50-55% field visible)
+  minZoom: 1.0,
+  maxZoom: 2.0,
+  corridorWidth: 0.25,          // 25% of visible width - player stays centered here
+  lerpX: 0.08,                  // Horizontal camera smoothing
+  visibleFieldRatio: 0.55       // Target: see 55% of field width
 } as const;

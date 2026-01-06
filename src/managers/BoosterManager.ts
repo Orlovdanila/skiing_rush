@@ -47,31 +47,40 @@ export class BoosterManager {
     }
   }
 
-  update(_time: number, player: Player, gifts: Phaser.GameObjects.Sprite[]): void {
+  update(
+    _time: number,
+    player: Player,
+    gifts: Phaser.GameObjects.Sprite[],
+    boosters?: Phaser.GameObjects.Sprite[]
+  ): void {
     if (this.magnet.active) {
       if (Date.now() > this.magnet.endTime) {
         this.magnet.active = false;
         this.hud?.hideMagnetTimer();
       } else {
-        this.attractGifts(player, gifts);
+        this.attractObjects(player, gifts);
+        // Also attract boosters (magnets and shields)
+        if (boosters) {
+          this.attractObjects(player, boosters);
+        }
         this.hud?.updateMagnetTimer(this.getRemainingTime('magnet'));
       }
     }
   }
 
-  private attractGifts(player: Player, gifts: Phaser.GameObjects.Sprite[]): void {
+  private attractObjects(player: Player, objects: Phaser.GameObjects.Sprite[]): void {
     const config = BOOSTER_CONFIG.magnet;
 
-    for (const gift of gifts) {
-      if (!gift.active) continue;
+    for (const obj of objects) {
+      if (!obj.active) continue;
 
       const dist = Phaser.Math.Distance.Between(
-        player.x, player.y, gift.x, gift.y
+        player.x, player.y, obj.x, obj.y
       );
 
       if (dist < config.radius) {
-        gift.x = Phaser.Math.Linear(gift.x, player.x, config.attractSpeed);
-        gift.y = Phaser.Math.Linear(gift.y, player.y, config.attractSpeed);
+        obj.x = Phaser.Math.Linear(obj.x, player.x, config.attractSpeed);
+        obj.y = Phaser.Math.Linear(obj.y, player.y, config.attractSpeed);
       }
     }
   }

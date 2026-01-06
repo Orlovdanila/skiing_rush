@@ -8,7 +8,7 @@ import { ScoreManager } from '../managers/ScoreManager';
 import { HUD } from '../ui/HUD';
 import { Countdown } from '../ui/Countdown';
 import { difficulty, getDifficulty } from '../config/difficultyConfig';
-import { POOL_SIZES } from '../config/gameConfig';
+import { POOL_SIZES, CAMERA_CONFIG } from '../config/gameConfig';
 
 export class GameScene extends Phaser.Scene {
   // Core
@@ -32,6 +32,9 @@ export class GameScene extends Phaser.Scene {
   private cameraSpeed = difficulty.speed.initial;
   private isGameOver = false;
   private isCountdownActive = true;
+
+  // Camera horizontal follow
+  private targetScrollX = 0;
 
   // Groups
   public giftGroup!: Phaser.GameObjects.Group;
@@ -79,7 +82,7 @@ export class GameScene extends Phaser.Scene {
     this.scale.on('resize', this.handleResize, this);
 
     // Initial camera zoom (closer at start)
-    this.cameras.main.setZoom(1.3);
+    this.cameras.main.setZoom(CAMERA_CONFIG.initialZoom);
 
     // Start countdown
     this.startCountdown();
@@ -94,7 +97,7 @@ export class GameScene extends Phaser.Scene {
     // Camera zoom out after countdown
     this.tweens.add({
       targets: this.cameras.main,
-      zoom: 0.85,
+      zoom: CAMERA_CONFIG.gameZoom,
       duration: 800,
       ease: 'Sine.easeOut'
     });
@@ -211,6 +214,9 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.scrollY += this.cameraSpeed * dt;
     this.scoreManager.updateDistance(distance + this.cameraSpeed * dt);
 
+    // Update horizontal camera follow
+    this.updateCameraX();
+
     // Keep player in viewport
     this.player.y = this.cameras.main.scrollY + this.scale.height * 0.22;
 
@@ -222,7 +228,7 @@ export class GameScene extends Phaser.Scene {
       this.scale.height,
       this.scoreManager.getDistance()
     );
-    this.boosterManager.update(time, this.player, this.getActiveGifts());
+    this.boosterManager.update(time, this.player, this.getActiveGifts(), this.getActiveBoosters());
 
     // Cleanup objects behind camera
     this.poolManager.cleanup(this.cameras.main.scrollY);
@@ -251,6 +257,53 @@ export class GameScene extends Phaser.Scene {
   private handleResize(gameSize: Phaser.Structs.Size): void {
     this.calculateGameWidth();
     this.hud?.reposition(gameSize.width, gameSize.height);
+  }
+
+  // Horizontal camera follow - keeps player visible while not showing area beyond field
+  private updateCameraX(): void {
+    const camera = this.cameras.main;
+    const playerX = this.player.x;
+    const screenWidth = this.scale.width;
+
+    // Calculate visible width accounting for zoom
+    const visibleWidth = screenWidth / camera.zoom;
+
+    // Corridor - center area where camera doesn't follow
+    const corridorHalfWidth = visibleWidth * CAMERA_CONFIG.corridorWidth / 2;
+    const cameraCenter = camera.scrollX + visibleWidth / 2;
+
+    // Check if player is outside the corridor
+    if (playerX < cameraCenter - corridorHalfWidth) {
+      // Player is left of corridor
+      this.targetScrollX = playerX - visibleWidth / 2 + corridorHalfWidth;
+    } else if (playerX > cameraCenter + corridorHalfWidth) {
+      // Player is right of corridor
+      this.targetScrollX = playerX - visibleWidth / 2 - corridorHalfWidth;
+    }
+
+    // Clamp camera to field bounds (don't show empty space beyond field)
+    const fieldLeft = (screenWidth - this.gameWidth) / 2;
+    const fieldRight = fieldLeft + this.gameWidth;
+    const minScrollX = fieldLeft;
+    const maxScrollX = fieldRight - visibleWidth;
+
+    this.targetScrollX = Phaser.Math.Clamp(
+      this.targetScrollX,
+      minScrollX,
+      maxScrollX
+    );
+
+    // Smooth interpolation
+    camera.scrollX = Phaser.Math.Linear(
+      camera.scrollX,
+      this.targetScrollX,
+      CAMERA_CONFIG.lerpX
+    );
+  }
+
+  // Public method for Player to get current camera speed
+  public getCurrentCameraSpeed(): number {
+    return this.cameraSpeed;
   }
 
   private setupCollisions(): void {
@@ -321,6 +374,12 @@ export class GameScene extends Phaser.Scene {
   private getActiveGifts(): Phaser.GameObjects.Sprite[] {
     return this.giftGroup.getChildren().filter(
       (g) => (g as Phaser.GameObjects.Sprite).active
+    ) as Phaser.GameObjects.Sprite[];
+  }
+
+  private getActiveBoosters(): Phaser.GameObjects.Sprite[] {
+    return this.boosterGroup.getChildren().filter(
+      (b) => (b as Phaser.GameObjects.Sprite).active
     ) as Phaser.GameObjects.Sprite[];
   }
 

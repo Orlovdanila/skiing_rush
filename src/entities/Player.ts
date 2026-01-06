@@ -1,21 +1,15 @@
 import Phaser from 'phaser';
 import { GameScene } from '../scenes/GameScene';
-import { HITBOXES } from '../config/gameConfig';
+import { HITBOXES, PLAYER_PHYSICS } from '../config/gameConfig';
 
 export class Player extends Phaser.GameObjects.Sprite {
-  private velocityX = 0;
-  private readonly turnAcceleration = 2000;
-  private readonly maxHorizontalSpeed = 700;
-  private readonly friction = 0.92;
-  private targetDirection = 0; // -1 | 0 | 1
-
-  // Фазовая модуляция для эффекта "слалом-качания"
-  private turnPhase = 0; // 0..1, фаза текущего поворота
-  private lastDirection = 0; // предыдущее направление
-  private readonly phaseSpeed = 3; // скорость накопления фазы (сек^-1)
+  // Angle-based movement system
+  private movementAngle = 0;              // Current angle (radians), 0 = straight down
+  private targetAngle = 0;                // Target angle to interpolate to
+  private inputDirection = 0;             // -1 | 0 | 1 (input command)
 
   constructor(scene: GameScene, x: number, y: number) {
-    super(scene, x, y, 'player'); // TODO: Use actual texture
+    super(scene, x, y, 'player');
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -36,64 +30,77 @@ export class Player extends Phaser.GameObjects.Sprite {
   update(_time: number, delta: number): void {
     const dt = delta / 1000;
     const gameScene = this.scene as GameScene;
+    const physics = PLAYER_PHYSICS;
 
-    // Детект смены направления → сброс фазы
-    if (
-      this.targetDirection !== 0 &&
-      this.targetDirection !== this.lastDirection
-    ) {
-      this.turnPhase = 0;
+    // 1. Update target angle based on input
+    if (this.inputDirection !== 0) {
+      // When pressing a direction, increase angle in that direction
+      this.targetAngle += this.inputDirection * physics.angleChangeSpeed * dt;
+      this.targetAngle = Phaser.Math.Clamp(
+        this.targetAngle,
+        -physics.maxAngle,
+        physics.maxAngle
+      );
     }
-    this.lastDirection = this.targetDirection;
+    // When not pressing, targetAngle stays the same (player continues at angle!)
 
-    // Накопление фазы при активном повороте
-    if (this.targetDirection !== 0) {
-      this.turnPhase = Math.min(1, this.turnPhase + this.phaseSpeed * dt);
-    }
-
-    // S-образный модификатор (средний эффект)
-    // sin(0) = 0, sin(π/2) = 1, sin(π) = 0
-    // Ремаппим: 0.7 + 0.6 * sin(phase * π) → от 0.7 до 1.3
-    const phaseMultiplier = 0.7 + 0.6 * Math.sin(this.turnPhase * Math.PI);
-
-    // Apply acceleration with phase modulation
-    this.velocityX +=
-      this.targetDirection * this.turnAcceleration * phaseMultiplier * dt;
-
-    // Apply friction (creates inertia/arc)
-    this.velocityX *= this.friction;
-
-    // Clamp velocity
-    this.velocityX = Phaser.Math.Clamp(
-      this.velocityX,
-      -this.maxHorizontalSpeed,
-      this.maxHorizontalSpeed
+    // 2. Smooth interpolation to target angle
+    this.movementAngle = Phaser.Math.Linear(
+      this.movementAngle,
+      this.targetAngle,
+      physics.angleSmoothness
     );
 
-    // Apply horizontal movement
-    this.x += this.velocityX * dt;
+    // 3. Calculate horizontal speed from angle
+    // If camera moves at cameraSpeed, horizontal component = cameraSpeed * tan(angle)
+    const cameraSpeed = gameScene.getCurrentCameraSpeed();
+    const horizontalSpeed = cameraSpeed * Math.tan(this.movementAngle);
 
-    // Rotate sprite based on velocity
-    this.rotation = (this.velocityX / this.maxHorizontalSpeed) * 0.25;
+    // 4. Apply horizontal movement
+    this.x += horizontalSpeed * dt;
 
-    // Clamp to game bounds
+    // 5. Check bounds and reflect angle on wall hit
     const margin = 60;
     const bounds = gameScene.gameWidth || this.scene.scale.width;
     const centerX = this.scene.scale.width / 2;
     const halfWidth = bounds / 2 - margin;
-    this.x = Phaser.Math.Clamp(this.x, centerX - halfWidth, centerX + halfWidth);
+    const minX = centerX - halfWidth;
+    const maxX = centerX + halfWidth;
+
+    if (this.x <= minX) {
+      this.x = minX + 2; // Small offset to prevent sticking
+      // Reflect angle: if going left, now go right
+      this.targetAngle = Math.abs(this.targetAngle) * 0.85; // Slight damping on bounce
+      this.movementAngle = Math.abs(this.movementAngle) * 0.85;
+    } else if (this.x >= maxX) {
+      this.x = maxX - 2;
+      // Reflect angle: if going right, now go left
+      this.targetAngle = -Math.abs(this.targetAngle) * 0.85;
+      this.movementAngle = -Math.abs(this.movementAngle) * 0.85;
+    }
+
+    // 6. Visual sprite rotation (proportional to movement angle)
+    this.rotation = this.movementAngle * physics.visualTiltFactor;
   }
 
   turnLeft(): void {
-    this.targetDirection = -1;
+    this.inputDirection = -1;
   }
 
   turnRight(): void {
-    this.targetDirection = 1;
+    this.inputDirection = 1;
   }
 
   stopTurn(): void {
-    this.targetDirection = 0;
+    this.inputDirection = 0;
+    // NOTE: We do NOT reset targetAngle here - player continues at current angle!
+  }
+
+  // Reset movement (e.g., on respawn or game restart)
+  resetMovement(): void {
+    this.movementAngle = 0;
+    this.targetAngle = 0;
+    this.inputDirection = 0;
   }
 
   flash(duration: number): void {

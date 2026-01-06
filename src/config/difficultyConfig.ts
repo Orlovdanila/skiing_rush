@@ -9,9 +9,9 @@ export const difficulty = {
 
   // Obstacles
   obstacles: {
-    initialDensity: 0.25,
-    maxDensity: 0.65,
-    densityIncrement: 0.00004, // +0.04 per 1000px
+    initialDensity: 0.20,
+    maxDensity: 0.45,
+    densityIncrement: 0.00003, // +0.03 per 1000px
     maxPerWave: {
       initial: 1,
       max: 3,
@@ -34,9 +34,9 @@ export const difficulty = {
 
   // Boosters
   boosters: {
-    chance: 0.05,
+    chance: 0.12,
     minDistance: 0,
-    cooldown: 1500,
+    cooldown: 900,
     types: ['magnet', 'shield'] as const,
     weights: { magnet: 50, shield: 50 }
   }
@@ -44,12 +44,12 @@ export const difficulty = {
 
 // Difficulty phases for reference
 export const DIFFICULTY_PHASES = [
-  { distance: 0,     name: 'Tutorial', speed: 300, density: 0.25 },
-  { distance: 2000,  name: 'Easy',     speed: 350, density: 0.35 },
-  { distance: 5000,  name: 'Medium',   speed: 450, density: 0.45 },
-  { distance: 10000, name: 'Hard',     speed: 550, density: 0.55 },
-  { distance: 20000, name: 'Insane',   speed: 650, density: 0.65 },
-  { distance: 30000, name: 'Max',      speed: 700, density: 0.65 }
+  { distance: 0,     name: 'Tutorial', speed: 300, density: 0.20 },
+  { distance: 2000,  name: 'Easy',     speed: 350, density: 0.28 },
+  { distance: 5000,  name: 'Medium',   speed: 450, density: 0.35 },
+  { distance: 10000, name: 'Hard',     speed: 550, density: 0.40 },
+  { distance: 20000, name: 'Insane',   speed: 650, density: 0.45 },
+  { distance: 30000, name: 'Max',      speed: 700, density: 0.45 }
 ];
 
 // Calculate current difficulty based on distance
