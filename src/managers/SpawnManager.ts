@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GameScene } from '../scenes/GameScene';
 import { getDifficulty, difficulty } from '../config/difficultyConfig';
-import { SPAWN_CONFIG } from '../config/gameConfig';
+import { SPAWN_CONFIG, GIFT_POINTS } from '../config/gameConfig';
 import { GiftSize } from '../entities/Gift';
 import { ObstacleType } from '../entities/Obstacle';
 import { BoosterType } from '../entities/Booster';
@@ -15,6 +15,11 @@ export class SpawnManager {
   constructor(scene: GameScene) {
     this.scene = scene;
     this.laneWidth = scene.gameWidth / SPAWN_CONFIG.laneCount;
+  }
+
+  reset(): void {
+    this.lastSpawnY = 0;
+    this.lastBoosterY = 0;
   }
 
   update(cameraY: number, cameraHeight: number, distance: number): void {
@@ -78,58 +83,50 @@ export class SpawnManager {
   private spawnGift(lane: number, y: number): void {
     const x = this.laneToX(lane);
     const size = this.getRandomGiftSize();
+    const poolKey = `gift_${size}`;
     
-    // Create placeholder sprite
-    const gift = this.scene.add.sprite(x, y, 'gift');
-    gift.setDisplaySize(size === 'small' ? 48 : size === 'medium' ? 64 : 80, size === 'small' ? 48 : size === 'medium' ? 64 : 80);
-    gift.setTint(size === 'small' ? 0xffff00 : size === 'medium' ? 0xff8800 : 0xff0088);
-    gift.setData('points', size === 'small' ? 10 : size === 'medium' ? 30 : 50);
-    gift.setData('size', size);
-    
-    this.scene.physics.add.existing(gift);
-    this.scene.giftGroup.add(gift);
+    const gift = this.scene.poolManager.acquire(poolKey, x, y);
+    if (gift) {
+      // Reset gift properties
+      const displaySize = size === 'small' ? 48 : size === 'medium' ? 64 : 80;
+      gift.setDisplaySize(displaySize, displaySize);
+      gift.setData('points', GIFT_POINTS[size]);
+      gift.setData('size', size);
+      this.scene.giftGroup.add(gift);
+    }
   }
 
   private spawnObstacle(lane: number, y: number): void {
     const x = this.laneToX(lane);
     const type = this.getRandomObstacleType();
     
-    const sizes: Record<ObstacleType, { w: number; h: number }> = {
-      tree_small: { w: 80, h: 100 },
-      tree_medium: { w: 100, h: 140 },
-      tree_large: { w: 140, h: 180 },
-      rock: { w: 70, h: 60 },
-      snowman: { w: 80, h: 100 }
-    };
-    
-    const colors: Record<ObstacleType, number> = {
-      tree_small: 0x228822,
-      tree_medium: 0x116611,
-      tree_large: 0x004400,
-      rock: 0x666666,
-      snowman: 0xffffff
-    };
-    
-    const obstacle = this.scene.add.sprite(x, y, 'obstacle');
-    obstacle.setDisplaySize(sizes[type].w, sizes[type].h);
-    obstacle.setTint(colors[type]);
-    obstacle.setData('type', type);
-    
-    this.scene.physics.add.existing(obstacle);
-    this.scene.obstacleGroup.add(obstacle);
+    const obstacle = this.scene.poolManager.acquire(type, x, y);
+    if (obstacle) {
+      const sizes: Record<ObstacleType, { w: number; h: number }> = {
+        tree_small: { w: 80, h: 100 },
+        tree_medium: { w: 100, h: 140 },
+        tree_large: { w: 140, h: 180 },
+        rock: { w: 70, h: 60 },
+        snowman: { w: 80, h: 100 }
+      };
+      const size = sizes[type];
+      obstacle.setDisplaySize(size.w, size.h);
+      obstacle.setData('type', type);
+      this.scene.obstacleGroup.add(obstacle);
+    }
   }
 
   private spawnBooster(lane: number, y: number): void {
     const x = this.laneToX(lane);
     const type = this.getRandomBoosterType();
+    const poolKey = `booster_${type}`;
     
-    const booster = this.scene.add.sprite(x, y, 'booster');
-    booster.setDisplaySize(64, 64);
-    booster.setTint(type === 'magnet' ? 0xff00ff : 0x00ffff);
-    booster.setData('type', type);
-    
-    this.scene.physics.add.existing(booster);
-    this.scene.boosterGroup.add(booster);
+    const booster = this.scene.poolManager.acquire(poolKey, x, y);
+    if (booster) {
+      booster.setDisplaySize(64, 64);
+      booster.setData('type', type);
+      this.scene.boosterGroup.add(booster);
+    }
   }
 
   private getRandomGiftSize(): GiftSize {

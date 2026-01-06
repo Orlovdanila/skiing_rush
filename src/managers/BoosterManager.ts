@@ -18,6 +18,13 @@ export class BoosterManager {
     this.hud = hud;
   }
 
+  reset(): void {
+    this.magnet = { active: false, endTime: 0 };
+    this.shield = { active: false, hits: 0 };
+    this.hud?.hideMagnetTimer();
+    this.hud?.hideShield();
+  }
+
   activate(type: 'magnet' | 'shield'): void {
     if (type === 'magnet') {
       const config = BOOSTER_CONFIG.magnet;

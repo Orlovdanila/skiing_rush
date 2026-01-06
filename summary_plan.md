@@ -1,4 +1,18 @@
-# Snow Rush 2026 — План реализации v2.0
+# Snow Rush 2026 — План реализации v2.1
+
+## Статус реализации
+
+| Фаза | Статус | Описание |
+|------|--------|----------|
+| Фаза 1: MVP + Foundation | ✅ DONE | Базовая структура, сцены, placeholder-текстуры |
+| Фаза 2: Core Gameplay | ✅ DONE | Спавнер, коллизии, очки, прогрессия |
+| Фаза 3: Бустеры + Polish | ✅ DONE | Магнит, щит, HUD, countdown (без звуков) |
+| Фаза 4: Assets + VFX | ⏳ TODO | Реальные спрайты, анимации |
+| Фаза 5: Backend | ⏳ TODO | API, лидерборд, anti-cheat |
+| Фаза 6: TG Integration | ⏳ TODO | TWA SDK, haptics |
+| Фаза 7: Deploy | ⏳ TODO | Оптимизация, CDN |
+
+---
 
 ## Решения
 
@@ -7,7 +21,7 @@
 | Движок | **Phaser 3 + TypeScript** |
 | Бэкенд | **Свой API + PostgreSQL** |
 | Сложность | **Скорость + плотность препятствий** |
-| Ассеты | **Новые (кастомные)** |
+| Ассеты | **Placeholder (цветные фигуры)** → Кастомные |
 
 ---
 
@@ -36,6 +50,19 @@ Backend:
 | **Итого** | **< 2.5 MB** | Lazy loading, CDN cache |
 
 ### Загрузка ассетов
+
+**Текущая реализация (placeholder):**
+Текстуры генерируются программно в `BootScene.generatePlaceholderTextures()`:
+
+| Текстура | Размер | Описание |
+|----------|--------|----------|
+| `player` | 80×100 | Зелёный прямоугольник |
+| `gift` | 64×64 | Белый квадрат с красными лентами |
+| `obstacle` | 100×140 | Белая ёлка (треугольник + ствол) |
+| `booster` | 64×64 | Белый круг с обводкой |
+| `bg_tile` | 128×128 | Светло-голубой тайл со снежинками |
+
+**Целевая реализация (с реальными ассетами):**
 ```typescript
 // Стратегия загрузки
 Phase 1: Critical (Boot)
@@ -1042,74 +1069,144 @@ export default defineConfig({
 
 ## Часть 8: Этапы реализации (обновлённые)
 
-### Фаза 1: MVP + Foundation
-1. Phaser 3 + Vite + TypeScript setup
-2. **Portrait + Landscape режимы**
-3. Сцены: Boot → Menu → Game → GameOver
-4. Игрок с инерцией + touch/keyboard
-5. Камера с вертикальным скроллом
-6. **Object pooling (PoolManager)**
-7. Placeholder спрайты
+### Фаза 1: MVP + Foundation ✅ DONE
+1. ✅ Phaser 3 + Vite + TypeScript setup
+2. ✅ Portrait + Landscape режимы
+3. ✅ Сцены: Boot → Menu → Game → GameOver
+4. ✅ Игрок с инерцией + touch/keyboard
+5. ✅ Камера с вертикальным скроллом
+6. ✅ Object pooling (PoolManager)
+7. ✅ Placeholder спрайты (генерация через Graphics)
 
-### Фаза 2: Core Gameplay
-1. SpawnManager с дорожками
-2. Подарки (3 типа) + коллизии + очки
-3. Препятствия + Game Over
-4. HUD (счёт, дистанция)
-5. Прогрессия сложности
+### Фаза 2: Core Gameplay ✅ DONE
+1. ✅ SpawnManager с дорожками (5 lanes)
+2. ✅ Подарки (3 типа: small/medium/large) + коллизии + очки
+3. ✅ Препятствия (tree_small/medium/large, rock, snowman) + Game Over
+4. ✅ HUD (счёт, дистанция)
+5. ✅ Прогрессия сложности (difficultyConfig)
 
-### Фаза 3: Бустеры + Polish
-1. Магнит (с плавным притяжением)
-2. Щит (3 хита)
-3. UI таймеров/индикаторов бустеров
-4. Отсчёт 3-2-1-Go
-5. Звуки (с MP3 fallback)
+### Фаза 3: Бустеры + Polish ✅ DONE
+1. ✅ Магнит (притяжение подарков, 5 сек, стакается)
+2. ✅ Щит (3 хита, UI индикатор)
+3. ✅ UI таймеров/индикаторов бустеров в HUD
+4. ✅ Отсчёт 3-2-1-Go (Countdown)
+5. ⏳ Звуки (TODO — нужны аудио файлы)
 
-### Фаза 4: Assets + VFX
-1. TexturePacker atlases
-2. Реальные спрайты
-3. VFX анимации
-4. Музыка
+### Фаза 4: Assets + VFX ⏳ TODO
+1. ⏳ TexturePacker atlases
+2. ⏳ Реальные спрайты (замена placeholder)
+3. ⏳ VFX анимации
+4. ⏳ Музыка
 
-### Фаза 5: Backend + Anti-cheat
-1. API endpoints
-2. **initData валидация**
-3. **Checksum + rate limiting**
-4. PostgreSQL + миграции
-5. Лидерборд UI
+### Фаза 5: Backend + Anti-cheat ⏳ TODO
+1. ⏳ API endpoints (структура готова в server/)
+2. ⏳ initData валидация
+3. ⏳ Checksum + rate limiting
+4. ⏳ PostgreSQL + миграции (schema.sql готов)
+5. ⏳ Лидерборд UI
 
-### Фаза 6: TG Integration
-1. @twa-dev/sdk
-2. Haptic feedback
-3. Theme adaptation
-4. MainButton + шаринг
+### Фаза 6: TG Integration ⏳ TODO
+1. ⏳ @twa-dev/sdk
+2. ⏳ Haptic feedback
+3. ⏳ Theme adaptation
+4. ⏳ MainButton + шаринг
 
-### Фаза 7: Deploy + Optimize
-1. Bundle analysis (<400KB)
-2. Asset compression
-3. CDN + cache headers
-4. CSP
-5. Cloudflare Pages deploy
-6. Bot webhook
+### Фаза 7: Deploy + Optimize ⏳ TODO
+1. ⏳ Bundle analysis (<400KB)
+2. ⏳ Asset compression
+3. ⏳ CDN + cache headers
+4. ⏳ CSP
+5. ⏳ Cloudflare Pages deploy
+6. ⏳ Bot webhook
 
 ---
 
 ## Чеклист готовности
 
-- [ ] Бандл JS < 400KB gzip
-- [ ] Ассеты < 2MB total
-- [ ] FPS стабильный 60 на mid-tier Android
-- [ ] Portrait + Landscape работают
-- [ ] Object pooling — нет GC spikes
+### Core Game (Фазы 1-3) ✅
+- [x] Сцены: Boot → Menu → Game → GameOver
+- [x] Игрок с инерцией движения
+- [x] Touch + Keyboard управление
+- [x] Portrait + Landscape работают
+- [x] Камера с вертикальным скроллом
+- [x] Подарки 3 размеров (10/30/50 очков)
+- [x] Препятствия 5 типов (деревья, камни, снеговик)
+- [x] Магнит (притяжение, 5 сек, стакается до 15 сек)
+- [x] Щит (3 хита, UI индикатор)
+- [x] HUD (счёт, дистанция, бустеры)
+- [x] Countdown 3-2-1-Go
+- [x] Прогрессия сложности
+- [x] Placeholder текстуры (цветные фигуры)
+
+### Assets (Фаза 4) ⏳
+- [ ] Реальные спрайты
+- [ ] VFX анимации
+- [ ] Аудио (музыка + SFX)
+
+### Backend (Фаза 5) ⏳
 - [ ] initData валидация работает
 - [ ] Checksum защита активна
 - [ ] Rate limiting настроен
-- [ ] Haptic feedback на всех событиях
-- [ ] Аудио работает на iOS Safari
 - [ ] Лидерборд загружается < 1сек
+
+### Production (Фазы 6-7) ⏳
+- [ ] Бандл JS < 400KB gzip
+- [ ] Ассеты < 2MB total
+- [ ] FPS стабильный 60 на mid-tier Android
+- [ ] Object pooling — нет GC spikes
+- [ ] Haptic feedback на всех событиях
 - [ ] CSP настроен для TWA
 
 ---
 
-**Версия:** 2.0
+## Как запустить
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # Сборка в dist/
+```
+
+---
+
+## Next Tasks
+
+> Приоритетный список задач для реализации. Обновляй после выполнения каждой задачи.
+
+### Приоритет 1: Критичные для запуска
+| ID | Задача | Файлы | Статус |
+|----|--------|-------|--------|
+| NT-001 | Добавить AudioManager и звуки | `src/managers/AudioManager.ts`, GameScene | ⏳ TODO |
+| NT-002 | Заменить placeholder на реальные спрайты | `BootScene.ts`, public/assets/ | ⏳ TODO |
+| NT-003 | Подключить @twa-dev/sdk | `src/main.ts`, package.json | ⏳ TODO |
+
+### Приоритет 2: Backend + Лидерборд
+| ID | Задача | Файлы | Статус |
+|----|--------|-------|--------|
+| NT-004 | Реализовать server/index.ts | `server/index.ts` | ⏳ TODO |
+| NT-005 | initData валидация TG | `server/middleware/validateTG.ts` | ⏳ TODO |
+| NT-006 | API /leaderboard endpoints | `server/routes/leaderboard.ts` | ⏳ TODO |
+| NT-007 | Leaderboard UI компонент | `src/scenes/LeaderboardScene.ts` | ⏳ TODO |
+| NT-008 | Anti-cheat checksum | `src/api/anticheat.ts` | ⏳ TODO |
+
+### Приоритет 3: Polish + Оптимизация
+| ID | Задача | Файлы | Статус |
+|----|--------|-------|--------|
+| NT-009 | VFX анимации (сбор, удар) | `src/vfx/` | ⏳ TODO |
+| NT-010 | Haptic feedback | `src/managers/HapticManager.ts` | ⏳ TODO |
+| NT-011 | Интеграция PoolManager в SpawnManager | `SpawnManager.ts` | ⏳ TODO |
+| NT-012 | Bundle optimization (<400KB) | vite.config.ts | ⏳ TODO |
+
+### Заглушки в коде (требуют замены)
+| Файл | Строка | Описание |
+|------|--------|----------|
+| `BootScene.ts` | `generatePlaceholderTextures()` | Заменить на загрузку реальных ассетов |
+| `GameScene.ts` | `// TODO: Play sound` | Добавить вызовы AudioManager |
+| `GameOverScene.ts` | `// TODO: Submit score` | Отправка результата на сервер |
+| `MenuScene.ts` | `// TODO: show leaderboard` | Переход на LeaderboardScene |
+
+---
+
+**Версия:** 2.1
 **Дата:** 6 января 2026
+**Статус:** Играбельный прототип с placeholder-графикой
