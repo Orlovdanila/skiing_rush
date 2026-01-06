@@ -4,19 +4,16 @@ import { HITBOXES, GIFT_POINTS } from '../config/gameConfig';
 export type GiftSize = 'small' | 'medium' | 'large';
 
 export class Gift extends Phaser.GameObjects.Sprite {
-  private giftSize: GiftSize = 'small';
-
   constructor(scene: Phaser.Scene, x: number, y: number, size: GiftSize = 'small') {
     super(scene, x, y, `gift_${size}`); // TODO: Use actual texture
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.setSize(size);
+    this.setGiftSize(size);
   }
 
-  setSize(size: GiftSize): void {
-    this.giftSize = size;
+  setGiftSize(size: GiftSize): void {
 
     // Set display size based on type
     const sizes = { small: 48, medium: 64, large: 80 };
@@ -45,7 +42,7 @@ export class Gift extends Phaser.GameObjects.Sprite {
 
   reset(x: number, y: number, size: GiftSize): void {
     this.setPosition(x, y);
-    this.setSize(size);
+    this.setGiftSize(size);
     this.setActive(true);
     this.setVisible(true);
   }

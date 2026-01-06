@@ -4,7 +4,6 @@ import { HITBOXES } from '../config/gameConfig';
 export type ObstacleType = 'tree_small' | 'tree_medium' | 'tree_large' | 'rock' | 'snowman';
 
 export class Obstacle extends Phaser.GameObjects.Sprite {
-  private obstacleType: ObstacleType = 'tree_small';
 
   constructor(scene: Phaser.Scene, x: number, y: number, type: ObstacleType = 'tree_small') {
     super(scene, x, y, type); // TODO: Use actual texture
@@ -16,8 +15,6 @@ export class Obstacle extends Phaser.GameObjects.Sprite {
   }
 
   setType(type: ObstacleType): void {
-    this.obstacleType = type;
-
     // Set display size based on type
     const sizes: Record<ObstacleType, { width: number; height: number }> = {
       tree_small: { width: 80, height: 100 },
@@ -45,10 +42,18 @@ export class Obstacle extends Phaser.GameObjects.Sprite {
     const hitbox = HITBOXES[type];
     if (hitbox && 'width' in hitbox) {
       body.setSize(hitbox.width, hitbox.height);
-      body.setOffset(
-        (size.width - hitbox.width) / 2,
-        (size.height - hitbox.height) / 2
-      );
+      // Trees: hitbox at base (trunk), others: centered
+      if (type.startsWith('tree_')) {
+        body.setOffset(
+          (size.width - hitbox.width) / 2,
+          size.height - hitbox.height - 5
+        );
+      } else {
+        body.setOffset(
+          (size.width - hitbox.width) / 2,
+          (size.height - hitbox.height) / 2
+        );
+      }
     }
 
     this.setData('type', type);

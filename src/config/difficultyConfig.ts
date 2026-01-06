@@ -22,7 +22,9 @@ export const difficulty = {
 
   // Gifts
   gifts: {
-    density: 0.35,
+    density: 0.5,
+    earlyBonusDistance: 3000,
+    earlyBonusMultiplier: 1.5,
     distribution: {
       small: 60,
       medium: 30,
@@ -32,9 +34,9 @@ export const difficulty = {
 
   // Boosters
   boosters: {
-    chance: 0.02,
-    minDistance: 500,
-    cooldown: 3000,
+    chance: 0.05,
+    minDistance: 0,
+    cooldown: 1500,
     types: ['magnet', 'shield'] as const,
     weights: { magnet: 50, shield: 50 }
   }
@@ -79,11 +81,17 @@ export function getDifficulty(distance: number) {
     ? d.boosters.chance
     : 0;
 
+  // Gift density with early game bonus
+  let giftDensity = d.gifts.density;
+  if (distance < d.gifts.earlyBonusDistance) {
+    giftDensity *= d.gifts.earlyBonusMultiplier;
+  }
+
   return {
     speed,
     obstacleDensity,
     maxObstaclesPerWave,
-    giftDensity: d.gifts.density,
+    giftDensity,
     boosterChance
   };
 }

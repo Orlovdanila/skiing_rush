@@ -189,17 +189,35 @@ class GameScene extends Phaser.Scene {
 ```typescript
 class Player extends Phaser.GameObjects.Sprite {
   private velocityX = 0;
-  private readonly baseSpeed = 300;
-  private readonly turnAcceleration = 800;
-  private readonly maxHorizontalSpeed = 400;
+  private readonly turnAcceleration = 2000;      // Быстрый отклик
+  private readonly maxHorizontalSpeed = 700;     // Резкие повороты
   private readonly friction = 0.92;
-  private targetDirection = 0;            // -1 | 0 | 1
+  private targetDirection = 0;                   // -1 | 0 | 1
+
+  // Фазовая модуляция для эффекта "слалом-качания"
+  private turnPhase = 0;                         // 0..1
+  private lastDirection = 0;
+  private readonly phaseSpeed = 3;               // сек^-1
 
   update(time: number, delta: number) {
     const dt = delta / 1000;
 
-    // Ускорение при повороте
-    this.velocityX += this.targetDirection * this.turnAcceleration * dt;
+    // Детект смены направления → сброс фазы
+    if (this.targetDirection !== 0 && this.targetDirection !== this.lastDirection) {
+      this.turnPhase = 0;
+    }
+    this.lastDirection = this.targetDirection;
+
+    // Накопление фазы при активном повороте
+    if (this.targetDirection !== 0) {
+      this.turnPhase = Math.min(1, this.turnPhase + this.phaseSpeed * dt);
+    }
+
+    // S-образный модификатор: 0.7 → 1.3
+    const phaseMultiplier = 0.7 + 0.6 * Math.sin(this.turnPhase * Math.PI);
+
+    // Ускорение при повороте с фазовой модуляцией
+    this.velocityX += this.targetDirection * this.turnAcceleration * phaseMultiplier * dt;
 
     // Трение (создаёт инерцию/дугу)
     this.velocityX *= this.friction;
@@ -454,7 +472,9 @@ export const difficulty = {
 
   // Подарки
   gifts: {
-    density: 0.35,          // 35% шанс (фиксированный)
+    density: 0.5,           // 50% шанс базово
+    earlyBonusDistance: 3000,  // Первые 3000px
+    earlyBonusMultiplier: 1.5, // x1.5 = 75% в начале
     distribution: {         // Веса размеров
       small: 60,            // +10 очков
       medium: 30,           // +30
@@ -464,9 +484,9 @@ export const difficulty = {
 
   // Бустеры
   boosters: {
-    chance: 0.02,           // 2% шанс на волну
-    minDistance: 500,       // Не спавнить до 500px
-    cooldown: 3000,         // Минимум 3000px между бустерами
+    chance: 0.05,           // 5% шанс на волну
+    minDistance: 0,         // Сразу с начала
+    cooldown: 1500,         // 1500px между бустерами
     types: ['magnet', 'shield'],
     weights: { magnet: 50, shield: 50 }
   }
@@ -501,11 +521,17 @@ function getDifficulty(distance: number) {
     ? d.boosters.chance
     : 0;
 
+  // Gift density с бонусом в начале игры
+  let giftDensity = d.gifts.density;
+  if (distance < d.gifts.earlyBonusDistance) {
+    giftDensity *= d.gifts.earlyBonusMultiplier;
+  }
+
   return {
     speed,
     obstacleDensity,
     maxObstaclesPerWave,
-    giftDensity: d.gifts.density,
+    giftDensity,
     boosterChance
   };
 }
@@ -1126,13 +1152,17 @@ export default defineConfig({
 ### Core Game (Фазы 1-3) ✅
 - [x] Сцены: Boot → Menu → Game → GameOver
 - [x] Игрок с инерцией движения
+- [x] **Фазовая модуляция поворотов (слалом-качание)**
+- [x] **Резкие повороты (turnAcceleration=2000, maxSpeed=700)**
 - [x] Touch + Keyboard управление
 - [x] Portrait + Landscape работают
 - [x] Камера с вертикальным скроллом
 - [x] Подарки 3 размеров (10/30/50 очков)
+- [x] **Ранний бонус подарков (75% в первые 3000px)**
 - [x] Препятствия 5 типов (деревья, камни, снеговик)
 - [x] Магнит (притяжение, 5 сек, стакается до 15 сек)
 - [x] Щит (3 хита, UI индикатор)
+- [x] **Бустеры сразу с начала (5% шанс, cooldown 1500px)**
 - [x] HUD (счёт, дистанция, бустеры)
 - [x] Countdown 3-2-1-Go
 - [x] Прогрессия сложности
@@ -1207,6 +1237,6 @@ npm run build    # Сборка в dist/
 
 ---
 
-**Версия:** 2.1
+**Версия:** 2.2
 **Дата:** 6 января 2026
-**Статус:** Играбельный прототип с placeholder-графикой
+**Статус:** Играбельный прототип с улучшенной физикой поворотов

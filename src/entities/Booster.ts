@@ -4,7 +4,6 @@ import { HITBOXES } from '../config/gameConfig';
 export type BoosterType = 'magnet' | 'shield';
 
 export class Booster extends Phaser.GameObjects.Sprite {
-  private boosterType: BoosterType = 'magnet';
 
   constructor(scene: Phaser.Scene, x: number, y: number, type: BoosterType = 'magnet') {
     super(scene, x, y, `booster_${type}`); // TODO: Use actual texture
@@ -16,8 +15,6 @@ export class Booster extends Phaser.GameObjects.Sprite {
   }
 
   setBoosterType(type: BoosterType): void {
-    this.boosterType = type;
-
     // Display size
     this.setDisplaySize(64, 64);
 

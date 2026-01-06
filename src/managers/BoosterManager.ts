@@ -47,7 +47,7 @@ export class BoosterManager {
     }
   }
 
-  update(time: number, player: Player, gifts: Phaser.GameObjects.Sprite[]): void {
+  update(_time: number, player: Player, gifts: Phaser.GameObjects.Sprite[]): void {
     if (this.magnet.active) {
       if (Date.now() > this.magnet.endTime) {
         this.magnet.active = false;

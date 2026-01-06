@@ -64,7 +64,7 @@ export class GameScene extends Phaser.Scene {
     this.boosterGroup = this.add.group();
 
     // Create player
-    this.player = new Player(this, this.scale.width / 2, this.scale.height * 0.7);
+    this.player = new Player(this, this.scale.width / 2, this.scale.height * 0.22);
 
     // Create HUD
     this.hud = new HUD(this);
@@ -78,6 +78,9 @@ export class GameScene extends Phaser.Scene {
     // Handle resize
     this.scale.on('resize', this.handleResize, this);
 
+    // Initial camera zoom (closer at start)
+    this.cameras.main.setZoom(1.3);
+
     // Start countdown
     this.startCountdown();
   }
@@ -87,6 +90,14 @@ export class GameScene extends Phaser.Scene {
     const countdown = new Countdown(this);
     await countdown.start();
     this.isCountdownActive = false;
+
+    // Camera zoom out after countdown
+    this.tweens.add({
+      targets: this.cameras.main,
+      zoom: 0.85,
+      duration: 800,
+      ease: 'Sine.easeOut'
+    });
   }
 
   private createBackground(): void {
@@ -201,7 +212,7 @@ export class GameScene extends Phaser.Scene {
     this.scoreManager.updateDistance(distance + this.cameraSpeed * dt);
 
     // Keep player in viewport
-    this.player.y = this.cameras.main.scrollY + this.scale.height * 0.7;
+    this.player.y = this.cameras.main.scrollY + this.scale.height * 0.22;
 
     // Update systems
     this.player.update(time, delta);
@@ -271,7 +282,7 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
-  private onObstacleHit(player: Player, obstacle: Phaser.GameObjects.Sprite): void {
+  private onObstacleHit(_player: Player, obstacle: Phaser.GameObjects.Sprite): void {
     const isGameOver = this.boosterManager.onObstacleHit();
 
     if (isGameOver) {
@@ -287,7 +298,7 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private onGiftCollect(player: Player, gift: Phaser.GameObjects.Sprite): void {
+  private onGiftCollect(_player: Player, gift: Phaser.GameObjects.Sprite): void {
     const points = (gift.getData('points') as number) || 10;
     const size = gift.getData('size') as string;
     this.scoreManager.addScore(points);
@@ -298,7 +309,7 @@ export class GameScene extends Phaser.Scene {
     this.hapticFeedback('light');
   }
 
-  private onBoosterCollect(player: Player, booster: Phaser.GameObjects.Sprite): void {
+  private onBoosterCollect(_player: Player, booster: Phaser.GameObjects.Sprite): void {
     const type = booster.getData('type') as 'magnet' | 'shield';
     this.boosterManager.activate(type);
     this.poolManager.release(booster);

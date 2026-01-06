@@ -8,17 +8,21 @@ import { BoosterType } from '../entities/Booster';
 
 export class SpawnManager {
   private scene: GameScene;
-  private lastSpawnY = 0;
+  private lastSpawnY: number;
   private laneWidth: number;
   private lastBoosterY = 0;
 
   constructor(scene: GameScene) {
     this.scene = scene;
     this.laneWidth = scene.gameWidth / SPAWN_CONFIG.laneCount;
+    // Start spawning below player position (player is at 70% height)
+    // Add buffer so first obstacles appear below the screen
+    this.lastSpawnY = scene.scale.height + SPAWN_CONFIG.spawnBuffer;
   }
 
   reset(): void {
-    this.lastSpawnY = 0;
+    // Reset spawn position to below screen to avoid spawning on player
+    this.lastSpawnY = this.scene.scale.height + SPAWN_CONFIG.spawnBuffer;
     this.lastBoosterY = 0;
   }
 

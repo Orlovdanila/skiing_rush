@@ -46,59 +46,6 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generatePlaceholderTextures(): void {
-<<<<<<< Current (Your changes)
-    // Player - green rectangle 80x100
-    const playerGfx = this.make.graphics({});
-    playerGfx.fillStyle(0x00ff00);
-    playerGfx.fillRoundedRect(0, 0, 80, 100, 8);
-    playerGfx.generateTexture('player', 80, 100);
-    playerGfx.destroy();
-
-    // Gift - yellow square 64x64 (base texture, tint changes color)
-    const giftGfx = this.make.graphics({});
-    giftGfx.fillStyle(0xffffff);
-    giftGfx.fillRoundedRect(0, 0, 64, 64, 6);
-    giftGfx.lineStyle(3, 0xcc0000);
-    // Ribbon horizontal
-    giftGfx.strokeRect(0, 28, 64, 8);
-    // Ribbon vertical
-    giftGfx.strokeRect(28, 0, 8, 64);
-    giftGfx.generateTexture('gift', 64, 64);
-    giftGfx.destroy();
-
-    // Obstacle - green rectangle 100x140 (base texture for trees)
-    const obstacleGfx = this.make.graphics({});
-    obstacleGfx.fillStyle(0xffffff);
-    // Tree shape - triangle on top of rectangle
-    obstacleGfx.fillTriangle(50, 0, 0, 100, 100, 100);
-    obstacleGfx.fillRect(35, 100, 30, 40);
-    obstacleGfx.generateTexture('obstacle', 100, 140);
-    obstacleGfx.destroy();
-
-    // Booster - circle 64x64 (base texture)
-    const boosterGfx = this.make.graphics({});
-    boosterGfx.fillStyle(0xffffff);
-    boosterGfx.fillCircle(32, 32, 30);
-    boosterGfx.lineStyle(4, 0x000000, 0.3);
-    boosterGfx.strokeCircle(32, 32, 30);
-    boosterGfx.generateTexture('booster', 64, 64);
-    boosterGfx.destroy();
-
-    // Background tile - light blue 128x128 with snowflakes
-    const bgGfx = this.make.graphics({});
-    bgGfx.fillStyle(0xe8f4fc);
-    bgGfx.fillRect(0, 0, 128, 128);
-    // Add some "snowflake" dots
-    bgGfx.fillStyle(0xffffff, 0.6);
-    const snowPositions = [
-      [20, 15], [80, 25], [45, 50], [100, 70], [15, 90], [60, 110], [110, 100]
-    ];
-    for (const [x, y] of snowPositions) {
-      bgGfx.fillCircle(x, y, 2);
-    }
-    bgGfx.generateTexture('bg_tile', 128, 128);
-    bgGfx.destroy();
-=======
     // Player - green rectangle (skier)
     this.generateRect('player', 80, 100, 0x00cc44);
 
@@ -205,6 +152,5 @@ export class BootScene extends Phaser.Scene {
     }
     graphics.generateTexture(key, width, height);
     graphics.destroy();
->>>>>>> Incoming (Background Agent changes)
   }
 }

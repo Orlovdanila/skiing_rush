@@ -1,14 +1,14 @@
 // Hitbox sizes (smaller than visual for fair gameplay)
 export const HITBOXES = {
-  player: { width: 50, height: 60 },
+  player: { width: 36, height: 45 },
   gift_small: { radius: 20 },
   gift_medium: { radius: 28 },
   gift_large: { radius: 35 },
-  tree_small: { width: 40, height: 60 },
-  tree_medium: { width: 50, height: 80 },
-  tree_large: { width: 70, height: 100 },
-  rock: { width: 50, height: 40 },
-  snowman: { width: 50, height: 70 },
+  tree_small: { width: 28, height: 40 },
+  tree_medium: { width: 35, height: 55 },
+  tree_large: { width: 50, height: 70 },
+  rock: { width: 40, height: 30 },
+  snowman: { width: 40, height: 50 },
   booster: { radius: 28 }
 } as const;
 

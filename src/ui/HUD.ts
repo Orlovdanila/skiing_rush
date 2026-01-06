@@ -55,7 +55,7 @@ export class HUD extends Phaser.GameObjects.Container {
     ]);
   }
 
-  reposition(width: number, height: number): void {
+  reposition(width: number, _height: number): void {
     const padding = 20;
     const safeTop = 50;
 

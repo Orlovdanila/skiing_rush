@@ -49,7 +49,7 @@ export class MenuScene extends Phaser.Scene {
     this.scale.on('resize', this.handleResize, this);
   }
 
-  private handleResize(gameSize: Phaser.Structs.Size): void {
+  private handleResize(_gameSize: Phaser.Structs.Size): void {
     // Reposition elements on resize
   }
 }
