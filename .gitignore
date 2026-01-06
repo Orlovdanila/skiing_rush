@@ -1,31 +1,6 @@
-# Dependencies
-node_modules/
-.pnpm-store/
-
-# Build
-dist/
-build/
-.vite/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-.DS_Store
-
-# Env
+node_modules
+dist
 .env
 .env.local
-.env.*.local
-
-# Logs
 *.log
-npm-debug.log*
-
-# Cache
-.cache/
-*.tsbuildinfo
-
-# HAR files (large, not needed in repo)
-*.har
+.DS_Store
