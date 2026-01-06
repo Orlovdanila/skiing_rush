@@ -185,67 +185,83 @@ class GameScene extends Phaser.Scene {
 }
 ```
 
-### Инерция движения игрока
+### Angle-Based движение игрока (NEW!)
 ```typescript
+// Новая механика: угол сохраняется после отпускания кнопки (как лыжник)
 class Player extends Phaser.GameObjects.Sprite {
-  private velocityX = 0;
-  private readonly turnAcceleration = 2000;      // Быстрый отклик
-  private readonly maxHorizontalSpeed = 700;     // Резкие повороты
-  private readonly friction = 0.92;
-  private targetDirection = 0;                   // -1 | 0 | 1
+  private movementAngle = 0;              // Текущий угол (радианы), 0 = прямо
+  private targetAngle = 0;                // Целевой угол
+  private inputDirection = 0;             // -1 | 0 | 1
 
-  // Фазовая модуляция для эффекта "слалом-качания"
-  private turnPhase = 0;                         // 0..1
-  private lastDirection = 0;
-  private readonly phaseSpeed = 3;               // сек^-1
+  // Конфиг из PLAYER_PHYSICS
+  // maxAngle: Math.PI / 4        (~45 градусов)
+  // angleChangeSpeed: 1.2        (рад/сек)
+  // angleSmoothness: 0.08        (lerp factor)
+  // visualTiltFactor: 0.6        (множитель наклона спрайта)
 
   update(time: number, delta: number) {
     const dt = delta / 1000;
 
-    // Детект смены направления → сброс фазы
-    if (this.targetDirection !== 0 && this.targetDirection !== this.lastDirection) {
-      this.turnPhase = 0;
+    // 1. При нажатии — увеличиваем угол
+    if (this.inputDirection !== 0) {
+      this.targetAngle += this.inputDirection * angleChangeSpeed * dt;
+      this.targetAngle = clamp(this.targetAngle, -maxAngle, maxAngle);
     }
-    this.lastDirection = this.targetDirection;
+    // При отпускании — угол СОХРАНЯЕТСЯ (ключевое отличие!)
 
-    // Накопление фазы при активном повороте
-    if (this.targetDirection !== 0) {
-      this.turnPhase = Math.min(1, this.turnPhase + this.phaseSpeed * dt);
+    // 2. Плавная интерполяция к целевому углу
+    this.movementAngle = lerp(this.movementAngle, this.targetAngle, 0.08);
+
+    // 3. Горизонтальная скорость = cameraSpeed * tan(angle)
+    const horizontalSpeed = cameraSpeed * Math.tan(this.movementAngle);
+    this.x += horizontalSpeed * dt;
+
+    // 4. Отражение от стен (угол меняет знак)
+    if (this.x <= minX) {
+      this.targetAngle = Math.abs(this.targetAngle) * 0.85;
+      this.movementAngle = Math.abs(this.movementAngle) * 0.85;
+    } else if (this.x >= maxX) {
+      this.targetAngle = -Math.abs(this.targetAngle) * 0.85;
+      this.movementAngle = -Math.abs(this.movementAngle) * 0.85;
     }
 
-    // S-образный модификатор: 0.7 → 1.3
-    const phaseMultiplier = 0.7 + 0.6 * Math.sin(this.turnPhase * Math.PI);
-
-    // Ускорение при повороте с фазовой модуляцией
-    this.velocityX += this.targetDirection * this.turnAcceleration * phaseMultiplier * dt;
-
-    // Трение (создаёт инерцию/дугу)
-    this.velocityX *= this.friction;
-
-    // Лимит скорости
-    this.velocityX = Phaser.Math.Clamp(
-      this.velocityX,
-      -this.maxHorizontalSpeed,
-      this.maxHorizontalSpeed
-    );
-
-    // Горизонтальное движение
-    this.x += this.velocityX * dt;
-
-    // Наклон спрайта
-    this.rotation = this.velocityX / this.maxHorizontalSpeed * 0.25;
-
-    // Границы экрана (адаптивные)
-    const margin = 60;
-    const bounds = this.scene.gameWidth || this.scene.scale.width;
-    const centerX = this.scene.scale.width / 2;
-    const halfWidth = bounds / 2 - margin;
-    this.x = Phaser.Math.Clamp(this.x, centerX - halfWidth, centerX + halfWidth);
+    // 5. Визуальный наклон спрайта
+    this.rotation = this.movementAngle * 0.6;
   }
 
-  turnLeft()  { this.targetDirection = -1; }
-  turnRight() { this.targetDirection = 1;  }
-  stopTurn()  { this.targetDirection = 0;  }
+  turnLeft()  { this.inputDirection = -1; }
+  turnRight() { this.inputDirection = 1;  }
+  stopTurn()  { this.inputDirection = 0;  } // НЕ сбрасывает targetAngle!
+}
+```
+
+### Камера с горизонтальным следованием (NEW!)
+```typescript
+// Камера следит за игроком по горизонтали с "коридором"
+// Зум 1.4 = видно 50-55% ширины поля
+
+// CAMERA_CONFIG:
+// initialZoom: 1.5       (приближение на старте)
+// gameZoom: 1.4          (после countdown)
+// corridorWidth: 0.25    (25% экрана — "мёртвая зона")
+// lerpX: 0.08            (плавность следования)
+
+private updateCameraX(): void {
+  const visibleWidth = screenWidth / camera.zoom;
+  const corridorHalfWidth = visibleWidth * 0.25 / 2;
+
+  // Камера следует только когда игрок выходит за коридор
+  if (playerX < cameraCenter - corridorHalfWidth) {
+    targetScrollX = playerX - visibleWidth/2 + corridorHalfWidth;
+  } else if (playerX > cameraCenter + corridorHalfWidth) {
+    targetScrollX = playerX - visibleWidth/2 - corridorHalfWidth;
+  }
+
+  // Камера НЕ показывает пустоту за полем
+  targetScrollX = clamp(targetScrollX, fieldLeft, fieldRight - visibleWidth);
+
+  // Плавная интерполяция
+  camera.scrollX = lerp(camera.scrollX, targetScrollX, 0.08);
 }
 ```
 
@@ -457,11 +473,11 @@ export const difficulty = {
     // Формула: speed = min(initial + distance * increment, max)
   },
 
-  // Препятствия
+  // Препятствия (обновлено!)
   obstacles: {
-    initialDensity: 0.25,   // 25% шанс спавна на волну
-    maxDensity: 0.65,       // 65% максимум
-    densityIncrement: 0.00004, // +0.04 за 1000px дистанции
+    initialDensity: 0.20,   // 20% шанс спавна на волну
+    maxDensity: 0.45,       // 45% максимум (было 65%)
+    densityIncrement: 0.00003, // +0.03 за 1000px дистанции
     maxPerWave: {
       initial: 1,
       max: 3,
@@ -470,23 +486,24 @@ export const difficulty = {
     }
   },
 
-  // Подарки
+  // Подарки (обновлено!)
   gifts: {
     density: 0.5,           // 50% шанс базово
     earlyBonusDistance: 3000,  // Первые 3000px
     earlyBonusMultiplier: 1.5, // x1.5 = 75% в начале
     distribution: {         // Веса размеров
       small: 60,            // +10 очков
-      medium: 30,           // +30
-      large: 10,            // +50
+      medium: 30,           // +20 очков (было 30)
+      large: 10,            // +30 очков (было 50)
+      // bonus: +40 очков (новый тип)
     }
   },
 
-  // Бустеры
+  // Бустеры (обновлено!)
   boosters: {
-    chance: 0.05,           // 5% шанс на волну
+    chance: 0.12,           // 12% шанс на волну (было 5%)
     minDistance: 0,         // Сразу с начала
-    cooldown: 1500,         // 1500px между бустерами
+    cooldown: 900,          // 900px между бустерами (было 1500)
     types: ['magnet', 'shield'],
     weights: { magnet: 50, shield: 50 }
   }
@@ -536,14 +553,14 @@ function getDifficulty(distance: number) {
   };
 }
 
-// Пороги прогрессии
+// Пороги прогрессии (обновлено!)
 const DIFFICULTY_PHASES = [
-  { distance: 0,     name: 'Tutorial',     speed: 300, density: 0.25 },
-  { distance: 2000,  name: 'Easy',         speed: 350, density: 0.35 },
-  { distance: 5000,  name: 'Medium',       speed: 450, density: 0.45 },
-  { distance: 10000, name: 'Hard',         speed: 550, density: 0.55 },
-  { distance: 20000, name: 'Insane',       speed: 650, density: 0.65 },
-  { distance: 30000, name: 'Max',          speed: 700, density: 0.65 },
+  { distance: 0,     name: 'Tutorial',     speed: 300, density: 0.20 },
+  { distance: 2000,  name: 'Easy',         speed: 350, density: 0.28 },
+  { distance: 5000,  name: 'Medium',       speed: 450, density: 0.35 },
+  { distance: 10000, name: 'Hard',         speed: 550, density: 0.40 },
+  { distance: 20000, name: 'Insane',       speed: 650, density: 0.45 },
+  { distance: 30000, name: 'Max',          speed: 700, density: 0.45 },
 ];
 ```
 
@@ -1151,18 +1168,19 @@ export default defineConfig({
 
 ### Core Game (Фазы 1-3) ✅
 - [x] Сцены: Boot → Menu → Game → GameOver
-- [x] Игрок с инерцией движения
-- [x] **Фазовая модуляция поворотов (слалом-качание)**
-- [x] **Резкие повороты (turnAcceleration=2000, maxSpeed=700)**
+- [x] **Angle-based движение (угол сохраняется после отпускания)** ← NEW!
+- [x] **Отражение от стен (угол меняет знак)** ← NEW!
 - [x] Touch + Keyboard управление
 - [x] Portrait + Landscape работают
-- [x] Камера с вертикальным скроллом
-- [x] Подарки 3 размеров (10/30/50 очков)
+- [x] **Камера с горизонтальным следованием + коридор** ← NEW!
+- [x] **Зум 1.4 (видно 50-55% поля)** ← NEW!
+- [x] Подарки 3 размеров (10/20/30 очков) ← обновлено!
 - [x] **Ранний бонус подарков (75% в первые 3000px)**
 - [x] Препятствия 5 типов (деревья, камни, снеговик)
-- [x] Магнит (притяжение, 5 сек, стакается до 15 сек)
+- [x] **Плотность препятствий снижена (45% макс)** ← NEW!
+- [x] Магнит (притяжение подарков И бустеров, 5 сек) ← обновлено!
 - [x] Щит (3 хита, UI индикатор)
-- [x] **Бустеры сразу с начала (5% шанс, cooldown 1500px)**
+- [x] **Бустеры чаще (12% шанс, cooldown 900px)** ← NEW!
 - [x] HUD (счёт, дистанция, бустеры)
 - [x] Countdown 3-2-1-Go
 - [x] Прогрессия сложности
@@ -1237,6 +1255,6 @@ npm run build    # Сборка в dist/
 
 ---
 
-**Версия:** 2.2
+**Версия:** 2.3
 **Дата:** 6 января 2026
-**Статус:** Играбельный прототип с улучшенной физикой поворотов
+**Статус:** Играбельный прототип с angle-based движением, камерой с горизонтальным следованием, улучшенным балансом
