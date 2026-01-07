@@ -58,9 +58,10 @@ export const SPAWN_CONFIG = {
 // Player physics (angle-based movement)
 export const PLAYER_PHYSICS = {
   maxAngle: Math.PI / 4,        // ~45 degrees max turn angle
-  angleChangeSpeed: 1.2,        // Radians per second when turning
+  angleChangeSpeed: 1.4,        // Radians per second when turning (+15%)
   angleSmoothness: 0.08,        // Lerp factor for smooth interpolation
-  visualTiltFactor: 0.6         // Multiplier for sprite rotation
+  visualTiltFactor: 0.6,        // Multiplier for sprite rotation
+  horizontalSpeedFactor: 0.9    // Multiplier for horizontal speed (-10%)
 } as const;
 
 // Camera configuration

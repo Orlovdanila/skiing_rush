@@ -54,7 +54,8 @@ export class Player extends Phaser.GameObjects.Sprite {
     // 3. Calculate horizontal speed from angle
     // If camera moves at cameraSpeed, horizontal component = cameraSpeed * tan(angle)
     const cameraSpeed = gameScene.getCurrentCameraSpeed();
-    const horizontalSpeed = cameraSpeed * Math.tan(this.movementAngle);
+    const speedFactor = physics.horizontalSpeedFactor ?? 1;
+    const horizontalSpeed = cameraSpeed * Math.tan(this.movementAngle) * speedFactor;
 
     // 4. Apply horizontal movement
     this.x += horizontalSpeed * dt;

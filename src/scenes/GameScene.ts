@@ -84,6 +84,9 @@ export class GameScene extends Phaser.Scene {
     // Initial camera zoom (closer at start)
     this.cameras.main.setZoom(CAMERA_CONFIG.initialZoom);
 
+    // Initialize camera X position centered on player
+    this.initializeCameraX();
+
     // Start countdown
     this.startCountdown();
   }
@@ -257,6 +260,28 @@ export class GameScene extends Phaser.Scene {
   private handleResize(gameSize: Phaser.Structs.Size): void {
     this.calculateGameWidth();
     this.hud?.reposition(gameSize.width, gameSize.height);
+  }
+
+  // Initialize camera X to center on player at game start
+  private initializeCameraX(): void {
+    const camera = this.cameras.main;
+    const screenWidth = this.scale.width;
+    const visibleWidth = screenWidth / camera.zoom;
+
+    // Center camera on player
+    const playerX = this.player.x;
+    let scrollX = playerX - visibleWidth / 2;
+
+    // Clamp to field bounds
+    const fieldLeft = (screenWidth - this.gameWidth) / 2;
+    const fieldRight = fieldLeft + this.gameWidth;
+    const minScrollX = fieldLeft;
+    const maxScrollX = fieldRight - visibleWidth;
+
+    scrollX = Phaser.Math.Clamp(scrollX, minScrollX, maxScrollX);
+
+    camera.scrollX = scrollX;
+    this.targetScrollX = scrollX;
   }
 
   // Horizontal camera follow - keeps player visible while not showing area beyond field
