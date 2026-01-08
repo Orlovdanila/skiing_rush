@@ -66,8 +66,8 @@ export class GameScene extends Phaser.Scene {
     this.obstacleGroup = this.add.group();
     this.boosterGroup = this.add.group();
 
-    // Create player
-    this.player = new Player(this, this.scale.width / 2, this.scale.height * 0.22);
+    // Create player at center of map (not screen)
+    this.player = new Player(this, this.gameWidth / 2, this.scale.height * 0.22);
 
     // Create HUD
     this.hud = new HUD(this);
@@ -252,9 +252,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private calculateGameWidth(): void {
-    const { width, height } = this.scale;
-    const isPortrait = height > width;
-    this.gameWidth = isPortrait ? width : width * 0.6;
+    const { width } = this.scale;
+    // Map is wider than screen (e.g., 2x) for camera scrolling
+    this.gameWidth = width * CAMERA_CONFIG.fieldWidthMultiplier;
   }
 
   private handleResize(gameSize: Phaser.Structs.Size): void {
@@ -265,60 +265,48 @@ export class GameScene extends Phaser.Scene {
   // Initialize camera X to center on player at game start
   private initializeCameraX(): void {
     const camera = this.cameras.main;
-    const screenWidth = this.scale.width;
-    const visibleWidth = screenWidth / camera.zoom;
+    const visibleWidth = this.scale.width / camera.zoom;
 
-    // Center camera on player
-    const playerX = this.player.x;
-    let scrollX = playerX - visibleWidth / 2;
+    // Map bounds: 0 to gameWidth
+    const minScrollX = 0;
+    const maxScrollX = Math.max(this.gameWidth - visibleWidth, 0);
 
-    // Clamp to field bounds
-    const fieldLeft = (screenWidth - this.gameWidth) / 2;
-    const fieldRight = fieldLeft + this.gameWidth;
-    const minScrollX = fieldLeft;
-    const maxScrollX = fieldRight - visibleWidth;
-
-    scrollX = Phaser.Math.Clamp(scrollX, minScrollX, maxScrollX);
-
-    camera.scrollX = scrollX;
-    this.targetScrollX = scrollX;
+    // Center on player, clamped to bounds
+    const idealScrollX = this.player.x - visibleWidth / 2;
+    camera.scrollX = Phaser.Math.Clamp(idealScrollX, minScrollX, maxScrollX);
+    this.targetScrollX = camera.scrollX;
   }
 
-  // Horizontal camera follow - keeps player visible while not showing area beyond field
+  // Horizontal camera follow with deadzone + edge clamping
+  // - Player in center 30% = camera doesn't move (deadzone)
+  // - Player outside deadzone = camera follows
+  // - Map edge reaches screen edge = camera stops, player continues
   private updateCameraX(): void {
     const camera = this.cameras.main;
     const playerX = this.player.x;
     const screenWidth = this.scale.width;
-
-    // Calculate visible width accounting for zoom
     const visibleWidth = screenWidth / camera.zoom;
 
-    // Corridor - center area where camera doesn't follow
-    const corridorHalfWidth = visibleWidth * CAMERA_CONFIG.corridorWidth / 2;
+    // Deadzone: center 30% of visible area (15% each side)
+    const deadzoneHalfWidth = visibleWidth * CAMERA_CONFIG.deadzoneRatio;
     const cameraCenter = camera.scrollX + visibleWidth / 2;
 
-    // Check if player is outside the corridor
-    if (playerX < cameraCenter - corridorHalfWidth) {
-      // Player is left of corridor
-      this.targetScrollX = playerX - visibleWidth / 2 + corridorHalfWidth;
-    } else if (playerX > cameraCenter + corridorHalfWidth) {
-      // Player is right of corridor
-      this.targetScrollX = playerX - visibleWidth / 2 - corridorHalfWidth;
+    // Only move camera if player is outside deadzone
+    if (playerX < cameraCenter - deadzoneHalfWidth) {
+      // Player left of deadzone - move camera left
+      this.targetScrollX = playerX - visibleWidth / 2 + deadzoneHalfWidth;
+    } else if (playerX > cameraCenter + deadzoneHalfWidth) {
+      // Player right of deadzone - move camera right
+      this.targetScrollX = playerX - visibleWidth / 2 - deadzoneHalfWidth;
     }
 
-    // Clamp camera to field bounds (don't show empty space beyond field)
-    const fieldLeft = (screenWidth - this.gameWidth) / 2;
-    const fieldRight = fieldLeft + this.gameWidth;
-    const minScrollX = fieldLeft;
-    const maxScrollX = fieldRight - visibleWidth;
+    // Clamp: keep camera within map bounds (0 to gameWidth)
+    const minScrollX = 0;
+    const maxScrollX = Math.max(this.gameWidth - visibleWidth, 0);
 
-    this.targetScrollX = Phaser.Math.Clamp(
-      this.targetScrollX,
-      minScrollX,
-      maxScrollX
-    );
+    this.targetScrollX = Phaser.Math.Clamp(this.targetScrollX, minScrollX, maxScrollX);
 
-    // Smooth interpolation
+    // Smooth follow
     camera.scrollX = Phaser.Math.Linear(
       camera.scrollX,
       this.targetScrollX,

@@ -185,83 +185,92 @@ class GameScene extends Phaser.Scene {
 }
 ```
 
-### Angle-Based движение игрока (NEW!)
+### Angle-Based движение с ease-out (дуговой поворот) ✅
 ```typescript
-// Новая механика: угол сохраняется после отпускания кнопки (как лыжник)
+// Механика: угол сохраняется после отпускания + ease-out для дуги
 class Player extends Phaser.GameObjects.Sprite {
   private movementAngle = 0;              // Текущий угол (радианы), 0 = прямо
-  private targetAngle = 0;                // Целевой угол
   private inputDirection = 0;             // -1 | 0 | 1
 
   // Конфиг из PLAYER_PHYSICS
-  // maxAngle: Math.PI / 4        (~45 градусов)
-  // angleChangeSpeed: 1.2        (рад/сек)
-  // angleSmoothness: 0.08        (lerp factor)
+  // maxAngle: Math.PI / 3        (60 градусов)
+  // angleChangeSpeed: 4.0        (рад/сек — базовая скорость)
+  // minSpeedFactor: 0.2          (20% скорости у максимального угла)
   // visualTiltFactor: 0.6        (множитель наклона спрайта)
 
   update(time: number, delta: number) {
     const dt = delta / 1000;
 
-    // 1. При нажатии — увеличиваем угол
+    // 1. Ease-out: быстрый старт дуги, замедление к максимуму
     if (this.inputDirection !== 0) {
-      this.targetAngle += this.inputDirection * angleChangeSpeed * dt;
-      this.targetAngle = clamp(this.targetAngle, -maxAngle, maxAngle);
+      const targetAngle = this.inputDirection * maxAngle;
+      const remainingAngle = Math.abs(targetAngle - this.movementAngle);
+      const normalizedRemaining = remainingAngle / (2 * maxAngle);
+      
+      // speedFactor: 1.0 в начале → minSpeedFactor у максимума
+      const speedFactor = minSpeedFactor + (1 - minSpeedFactor) * normalizedRemaining;
+      const actualSpeed = angleChangeSpeed * speedFactor;
+      
+      this.movementAngle += this.inputDirection * actualSpeed * dt;
+      this.movementAngle = clamp(this.movementAngle, -maxAngle, maxAngle);
     }
-    // При отпускании — угол СОХРАНЯЕТСЯ (ключевое отличие!)
+    // При отпускании — угол СОХРАНЯЕТСЯ (линейное движение под углом)
 
-    // 2. Плавная интерполяция к целевому углу
-    this.movementAngle = lerp(this.movementAngle, this.targetAngle, 0.08);
-
-    // 3. Горизонтальная скорость = cameraSpeed * tan(angle)
+    // 2. Горизонтальная скорость = cameraSpeed * tan(angle)
     const horizontalSpeed = cameraSpeed * Math.tan(this.movementAngle);
     this.x += horizontalSpeed * dt;
 
-    // 4. Отражение от стен (угол меняет знак)
-    if (this.x <= minX) {
-      this.targetAngle = Math.abs(this.targetAngle) * 0.85;
-      this.movementAngle = Math.abs(this.movementAngle) * 0.85;
-    } else if (this.x >= maxX) {
-      this.targetAngle = -Math.abs(this.targetAngle) * 0.85;
-      this.movementAngle = -Math.abs(this.movementAngle) * 0.85;
-    }
+    // 3. Границы карты (не камеры)
+    this.x = clamp(this.x, margin, screenWidth - margin);
 
-    // 5. Визуальный наклон спрайта
+    // 4. Визуальный наклон спрайта
     this.rotation = this.movementAngle * 0.6;
   }
 
   turnLeft()  { this.inputDirection = -1; }
   turnRight() { this.inputDirection = 1;  }
-  stopTurn()  { this.inputDirection = 0;  } // НЕ сбрасывает targetAngle!
+  stopTurn()  { this.inputDirection = 0;  } // Угол сохраняется!
 }
 ```
 
-### Камера с горизонтальным следованием (NEW!)
+### Камера с deadzone + edge clamping ✅
 ```typescript
-// Камера следит за игроком по горизонтали с "коридором"
-// Зум 1.4 = видно 50-55% ширины поля
+// Поведение камеры (как в референсе):
+// 1. Deadzone в центре (~30%) — игрок двигается, камера стоит
+// 2. Камера следует — когда игрок выходит из deadzone
+// 3. Край карты достигает края экрана — камера останавливается
+// 4. Игрок продолжает двигаться к краю (но остаётся на экране)
 
 // CAMERA_CONFIG:
 // initialZoom: 1.5       (приближение на старте)
 // gameZoom: 1.4          (после countdown)
-// corridorWidth: 0.25    (25% экрана — "мёртвая зона")
-// lerpX: 0.08            (плавность следования)
+// deadzoneRatio: 0.15    (15% каждая сторона = 30% центр)
+// lerpX: 0.1             (плавность следования)
 
 private updateCameraX(): void {
   const visibleWidth = screenWidth / camera.zoom;
-  const corridorHalfWidth = visibleWidth * 0.25 / 2;
+  const deadzoneHalfWidth = visibleWidth * deadzoneRatio;
+  const cameraCenter = camera.scrollX + visibleWidth / 2;
 
-  // Камера следует только когда игрок выходит за коридор
-  if (playerX < cameraCenter - corridorHalfWidth) {
-    targetScrollX = playerX - visibleWidth/2 + corridorHalfWidth;
-  } else if (playerX > cameraCenter + corridorHalfWidth) {
-    targetScrollX = playerX - visibleWidth/2 - corridorHalfWidth;
+  // Камера следует только когда игрок выходит за deadzone
+  if (playerX < cameraCenter - deadzoneHalfWidth) {
+    targetScrollX = playerX - visibleWidth/2 + deadzoneHalfWidth;
+  } else if (playerX > cameraCenter + deadzoneHalfWidth) {
+    targetScrollX = playerX - visibleWidth/2 - deadzoneHalfWidth;
   }
 
-  // Камера НЕ показывает пустоту за полем
-  targetScrollX = clamp(targetScrollX, fieldLeft, fieldRight - visibleWidth);
+  // Камера НЕ показывает пустоту за картой (карта = 0 до screenWidth)
+  const minScrollX = 0;
+  const maxScrollX = Math.max(screenWidth - visibleWidth, 0);
+  targetScrollX = clamp(targetScrollX, minScrollX, maxScrollX);
 
   // Плавная интерполяция
-  camera.scrollX = lerp(camera.scrollX, targetScrollX, 0.08);
+  camera.scrollX = lerp(camera.scrollX, targetScrollX, 0.1);
+}
+
+// Инициализация — просто центрировать на игроке
+private initializeCameraX(): void {
+  camera.scrollX = player.x - visibleWidth / 2;
 }
 ```
 
@@ -1168,11 +1177,11 @@ export default defineConfig({
 
 ### Core Game (Фазы 1-3) ✅
 - [x] Сцены: Boot → Menu → Game → GameOver
-- [x] **Angle-based движение (угол сохраняется после отпускания)** ← NEW!
-- [x] **Отражение от стен (угол меняет знак)** ← NEW!
+- [x] **Angle-based движение с ease-out (дуговой поворот)** ← UPDATED!
+- [x] **Границы игрока = карта, не камера** ← UPDATED!
 - [x] Touch + Keyboard управление
 - [x] Portrait + Landscape работают
-- [x] **Камера с горизонтальным следованием + коридор** ← NEW!
+- [x] **Камера с deadzone + edge clamping (как в референсе)** ← UPDATED!
 - [x] **Зум 1.4 (видно 50-55% поля)** ← NEW!
 - [x] Подарки 3 размеров (10/20/30 очков) ← обновлено!
 - [x] **Ранний бонус подарков (75% в первые 3000px)**
@@ -1244,6 +1253,7 @@ npm run build    # Сборка в dist/
 | NT-010 | Haptic feedback | `src/managers/HapticManager.ts` | ⏳ TODO |
 | NT-011 | Интеграция PoolManager в SpawnManager | `SpawnManager.ts` | ⏳ TODO |
 | NT-012 | Bundle optimization (<400KB) | vite.config.ts | ⏳ TODO |
+| NT-013 | Разрешить `npx tsc --noEmit` в Claude Code без аппрува | `.claude/settings.json` | ✅ DONE |
 
 ### Заглушки в коде (требуют замены)
 | Файл | Строка | Описание |
@@ -1255,6 +1265,6 @@ npm run build    # Сборка в dist/
 
 ---
 
-**Версия:** 2.3
-**Дата:** 6 января 2026
-**Статус:** Играбельный прототип с angle-based движением, камерой с горизонтальным следованием, улучшенным балансом
+**Версия:** 2.4
+**Дата:** 7 января 2026
+**Статус:** Играбельный прототип с дуговым поворотом (ease-out), камерой deadzone + edge clamping

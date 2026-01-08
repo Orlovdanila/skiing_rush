@@ -4,6 +4,7 @@
       "Edit",
       "Bash(npm run:*)",
       "Bash(npx tsc:*)",
+      "Bash(npx tsc --noEmit:*)",
       "Bash(npx vitest:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",

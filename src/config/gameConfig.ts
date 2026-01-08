@@ -51,26 +51,27 @@ export const POOL_SIZES = {
 // Spawn configuration
 export const SPAWN_CONFIG = {
   step: 150,        // Pixels between spawn waves
-  laneCount: 5,     // Number of lanes
-  spawnBuffer: 100  // Pixels below camera to spawn
+  laneCount: 10,    // Number of lanes (doubled for 2x map width)
+  spawnBuffer: 100, // Pixels below camera to spawn
+  edgeMargin: 80    // Don't spawn objects too close to map edges
 } as const;
 
-// Player physics (angle-based movement)
+// Player physics (angle-based movement with ease-out for arc feel)
 export const PLAYER_PHYSICS = {
-  maxAngle: Math.PI / 4,        // ~45 degrees max turn angle
-  angleChangeSpeed: 1.4,        // Radians per second when turning (+15%)
-  angleSmoothness: 0.08,        // Lerp factor for smooth interpolation
+  maxAngle: Math.PI / 3,        // 60 degrees max turn angle
+  angleChangeSpeed: 4.0,        // Base radians/sec (higher = sharper arc start)
+  minSpeedFactor: 0.2,          // Min speed at max angle (20% = ease-out effect)
   visualTiltFactor: 0.6,        // Multiplier for sprite rotation
-  horizontalSpeedFactor: 0.9    // Multiplier for horizontal speed (-10%)
+  horizontalSpeedFactor: 1.0    // Multiplier for horizontal speed
 } as const;
 
 // Camera configuration
 export const CAMERA_CONFIG = {
-  initialZoom: 1.5,             // Zoom at game start (closer)
-  gameZoom: 1.4,                // Zoom after countdown (50-55% field visible)
+  initialZoom: 1.0,             // Zoom at game start (no zoom for wider view)
+  gameZoom: 1.0,                // Zoom after countdown
   minZoom: 1.0,
   maxZoom: 2.0,
-  corridorWidth: 0.25,          // 25% of visible width - player stays centered here
+  deadzoneRatio: 0.125,         // 12.5% each side = 25% center deadzone
   lerpX: 0.08,                  // Horizontal camera smoothing
-  visibleFieldRatio: 0.55       // Target: see 55% of field width
+  fieldWidthMultiplier: 2.0     // Map width = screen width * this (2x wider)
 } as const;

@@ -34,6 +34,7 @@ npm run build              # Проверка сборки
 ```
 
 → **Обнови `summary_plan.md`**: отметь задачу как ✅ DONE
+→ **Обнови `CHANGELOG.md`**: запиши что изменено (для возможного отката)
 
 ---
 
@@ -132,6 +133,7 @@ this.collectBooster(booster);
 |------|------------|
 | `AGENTS.md` | Правила разработки (этот файл) |
 | `summary_plan.md` | План, статус, Next Tasks, заглушки |
+| `CHANGELOG.md` | Лог изменений (для отката) |
 | `src/config/gameConfig.ts` | Константы игры |
 | `src/config/difficultyConfig.ts` | Настройки сложности |
 

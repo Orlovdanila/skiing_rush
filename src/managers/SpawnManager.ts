@@ -14,7 +14,10 @@ export class SpawnManager {
 
   constructor(scene: GameScene) {
     this.scene = scene;
-    this.laneWidth = scene.gameWidth / SPAWN_CONFIG.laneCount;
+    // Lanes spread across playable area (with edge margins)
+    const edgeMargin = SPAWN_CONFIG.edgeMargin ?? 80;
+    const playableWidth = scene.gameWidth - edgeMargin * 2;
+    this.laneWidth = playableWidth / SPAWN_CONFIG.laneCount;
     // Start spawning below player position (player is at 70% height)
     // Add buffer so first obstacles appear below the screen
     this.lastSpawnY = scene.scale.height + SPAWN_CONFIG.spawnBuffer;
@@ -80,8 +83,9 @@ export class SpawnManager {
   }
 
   private laneToX(lane: number): number {
-    const startX = (this.scene.scale.width - this.scene.gameWidth) / 2;
-    return startX + (lane + 0.5) * this.laneWidth;
+    // Lanes start after edge margin
+    const edgeMargin = SPAWN_CONFIG.edgeMargin ?? 80;
+    return edgeMargin + (lane + 0.5) * this.laneWidth;
   }
 
   private spawnGift(lane: number, y: number): void {

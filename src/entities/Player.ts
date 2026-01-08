@@ -3,9 +3,8 @@ import { GameScene } from '../scenes/GameScene';
 import { HITBOXES, PLAYER_PHYSICS } from '../config/gameConfig';
 
 export class Player extends Phaser.GameObjects.Sprite {
-  // Angle-based movement system
+  // Angle-based movement system (direct angle change for sharp arcs)
   private movementAngle = 0;              // Current angle (radians), 0 = straight down
-  private targetAngle = 0;                // Target angle to interpolate to
   private inputDirection = 0;             // -1 | 0 | 1 (input command)
 
   constructor(scene: GameScene, x: number, y: number) {
@@ -32,55 +31,66 @@ export class Player extends Phaser.GameObjects.Sprite {
     const gameScene = this.scene as GameScene;
     const physics = PLAYER_PHYSICS;
 
-    // 1. Update target angle based on input
+    // 1. Update angle with ease-out (fast start, slow at max angle = arc feel)
     if (this.inputDirection !== 0) {
-      // When pressing a direction, increase angle in that direction
-      this.targetAngle += this.inputDirection * physics.angleChangeSpeed * dt;
-      this.targetAngle = Phaser.Math.Clamp(
-        this.targetAngle,
+      // Target angle = max in input direction
+      const targetAngle = this.inputDirection * physics.maxAngle;
+      // How far from target (0 = at target, 2*maxAngle = opposite side)
+      const remainingAngle = Math.abs(targetAngle - this.movementAngle);
+      const normalizedRemaining = remainingAngle / (2 * physics.maxAngle);
+      
+      // Ease-out: fast at start, slow near max
+      // minSpeedFactor prevents complete stop at max angle
+      const minFactor = physics.minSpeedFactor ?? 0.2;
+      const speedFactor = minFactor + (1 - minFactor) * normalizedRemaining;
+      const actualSpeed = physics.angleChangeSpeed * speedFactor;
+      
+      this.movementAngle += this.inputDirection * actualSpeed * dt;
+      this.movementAngle = Phaser.Math.Clamp(
+        this.movementAngle,
         -physics.maxAngle,
         physics.maxAngle
       );
     }
-    // When not pressing, targetAngle stays the same (player continues at angle!)
+    // When not pressing - angle stays fixed (linear movement at current angle)
 
-    // 2. Smooth interpolation to target angle
-    this.movementAngle = Phaser.Math.Linear(
-      this.movementAngle,
-      this.targetAngle,
-      physics.angleSmoothness
-    );
-
-    // 3. Calculate horizontal speed from angle
-    // If camera moves at cameraSpeed, horizontal component = cameraSpeed * tan(angle)
+    // 2. Calculate horizontal speed from angle
     const cameraSpeed = gameScene.getCurrentCameraSpeed();
     const speedFactor = physics.horizontalSpeedFactor ?? 1;
     const horizontalSpeed = cameraSpeed * Math.tan(this.movementAngle) * speedFactor;
 
-    // 4. Apply horizontal movement
+    // 3. Apply horizontal movement
     this.x += horizontalSpeed * dt;
 
-    // 5. Check bounds and reflect angle on wall hit
-    const margin = 60;
-    const bounds = gameScene.gameWidth || this.scene.scale.width;
-    const centerX = this.scene.scale.width / 2;
-    const halfWidth = bounds / 2 - margin;
-    const minX = centerX - halfWidth;
-    const maxX = centerX + halfWidth;
+    // 4. Clamp to VISIBLE screen bounds (intersection of camera view and map)
+    const camera = this.scene.cameras.main;
+    const visibleWidth = this.scene.scale.width / camera.zoom;
+    const margin = 50;
 
-    if (this.x <= minX) {
-      this.x = minX + 2; // Small offset to prevent sticking
-      // Reflect angle: if going left, now go right
-      this.targetAngle = Math.abs(this.targetAngle) * 0.85; // Slight damping on bounce
-      this.movementAngle = Math.abs(this.movementAngle) * 0.85;
-    } else if (this.x >= maxX) {
-      this.x = maxX - 2;
-      // Reflect angle: if going right, now go left
-      this.targetAngle = -Math.abs(this.targetAngle) * 0.85;
-      this.movementAngle = -Math.abs(this.movementAngle) * 0.85;
+    // Screen bounds in world coordinates
+    const screenLeft = camera.scrollX;
+    const screenRight = camera.scrollX + visibleWidth;
+
+    // Map bounds: 0 to gameWidth
+    const mapLeft = 0;
+    const mapRight = gameScene.gameWidth;
+
+    // Final bounds = intersection of screen and map
+    const minX = Math.max(screenLeft + margin, mapLeft + margin);
+    const maxX = Math.min(screenRight - margin, mapRight - margin);
+
+    // Bounce off boundaries (reflect movement angle like a bumper)
+    if (this.x < minX) {
+      this.x = minX;
+      this.movementAngle = -this.movementAngle * 0.7; // Reflect with damping
+      this.inputDirection = 0;
+    } else if (this.x > maxX) {
+      this.x = maxX;
+      this.movementAngle = -this.movementAngle * 0.7; // Reflect with damping
+      this.inputDirection = 0;
     }
 
-    // 6. Visual sprite rotation (proportional to movement angle)
+    // 5. Visual sprite rotation (proportional to movement angle)
     this.rotation = this.movementAngle * physics.visualTiltFactor;
   }
 
@@ -94,13 +104,12 @@ export class Player extends Phaser.GameObjects.Sprite {
 
   stopTurn(): void {
     this.inputDirection = 0;
-    // NOTE: We do NOT reset targetAngle here - player continues at current angle!
+    // Angle stays fixed - player continues linear movement at current angle
   }
 
   // Reset movement (e.g., on respawn or game restart)
   resetMovement(): void {
     this.movementAngle = 0;
-    this.targetAngle = 0;
     this.inputDirection = 0;
   }
 
