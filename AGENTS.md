@@ -1,3 +1,8 @@
+---
+description: "Snow Rush 2026 — единый источник правил для AI-агентов"
+alwaysApply: true
+---
+
 # Snow Rush 2026 - Project Guidelines
 
 > **Единый источник правды** для всех AI-агентов (Cursor, Claude Code) и разработчиков.

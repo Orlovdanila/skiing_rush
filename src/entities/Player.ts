@@ -1,11 +1,15 @@
 import Phaser from 'phaser';
 import { GameScene } from '../scenes/GameScene';
-import { HITBOXES, PLAYER_PHYSICS } from '../config/gameConfig';
+import { HITBOXES, PLAYER_PHYSICS, BOUNDARY_CONFIG } from '../config/gameConfig';
 
 export class Player extends Phaser.GameObjects.Sprite {
   // Angle-based movement system (direct angle change for sharp arcs)
   private movementAngle = 0;              // Current angle (radians), 0 = straight down
   private inputDirection = 0;             // -1 | 0 | 1 (input command)
+
+  // Boundary collision cooldown (prevents oscillation dampening when holding toward wall)
+  private boundaryCooldown = 0;           // Time remaining until input unblocked (ms)
+  private lastBoundaryHitDirection = 0;   // -1 = hit left, 1 = hit right, 0 = none
 
   constructor(scene: GameScene, x: number, y: number) {
     super(scene, x, y, 'player');
@@ -31,10 +35,26 @@ export class Player extends Phaser.GameObjects.Sprite {
     const gameScene = this.scene as GameScene;
     const physics = PLAYER_PHYSICS;
 
-    // 1. Update angle with ease-out (fast start, slow at max angle = arc feel)
-    if (this.inputDirection !== 0) {
+    // 0. Update boundary cooldown
+    if (this.boundaryCooldown > 0) {
+      this.boundaryCooldown -= delta;
+      if (this.boundaryCooldown <= 0) {
+        this.boundaryCooldown = 0;
+        this.lastBoundaryHitDirection = 0;
+      }
+    }
+
+    // 1. Get effective input direction (blocked toward boundary during cooldown)
+    let effectiveInput = this.inputDirection;
+    if (this.boundaryCooldown > 0 && this.inputDirection === this.lastBoundaryHitDirection) {
+      // Block input toward the boundary we just hit
+      effectiveInput = 0;
+    }
+
+    // 2. Update angle with ease-out (fast start, slow at max angle = arc feel)
+    if (effectiveInput !== 0) {
       // Target angle = max in input direction
-      const targetAngle = this.inputDirection * physics.maxAngle;
+      const targetAngle = effectiveInput * physics.maxAngle;
       // How far from target (0 = at target, 2*maxAngle = opposite side)
       const remainingAngle = Math.abs(targetAngle - this.movementAngle);
       const normalizedRemaining = remainingAngle / (2 * physics.maxAngle);
@@ -45,7 +65,7 @@ export class Player extends Phaser.GameObjects.Sprite {
       const speedFactor = minFactor + (1 - minFactor) * normalizedRemaining;
       const actualSpeed = physics.angleChangeSpeed * speedFactor;
       
-      this.movementAngle += this.inputDirection * actualSpeed * dt;
+      this.movementAngle += effectiveInput * actualSpeed * dt;
       this.movementAngle = Phaser.Math.Clamp(
         this.movementAngle,
         -physics.maxAngle,
@@ -54,18 +74,21 @@ export class Player extends Phaser.GameObjects.Sprite {
     }
     // When not pressing - angle stays fixed (linear movement at current angle)
 
-    // 2. Calculate horizontal speed from angle
+    // 3. Calculate horizontal speed from angle
     const cameraSpeed = gameScene.getCurrentCameraSpeed();
     const speedFactor = physics.horizontalSpeedFactor ?? 1;
     const horizontalSpeed = cameraSpeed * Math.tan(this.movementAngle) * speedFactor;
 
-    // 3. Apply horizontal movement
+    // 4. Apply horizontal movement
     this.x += horizontalSpeed * dt;
 
-    // 4. Clamp to VISIBLE screen bounds (intersection of camera view and map)
+    // 5. Clamp to VISIBLE screen bounds (intersection of camera view and map)
     const camera = this.scene.cameras.main;
     const visibleWidth = this.scene.scale.width / camera.zoom;
-    const margin = 50;
+    
+    // Dynamic margin based on fence asset width (scaled to current screen)
+    const scale = this.scene.scale.width / BOUNDARY_CONFIG.baseWidth;
+    const margin = (BOUNDARY_CONFIG.fenceWidth + BOUNDARY_CONFIG.playerMargin) * scale;
 
     // Screen bounds in world coordinates
     const screenLeft = camera.scrollX;
@@ -79,18 +102,22 @@ export class Player extends Phaser.GameObjects.Sprite {
     const minX = Math.max(screenLeft + margin, mapLeft + margin);
     const maxX = Math.min(screenRight - margin, mapRight - margin);
 
-    // Bounce off boundaries (reflect movement angle like a bumper)
+    // 6. Bounce off boundaries (reflect movement angle like a bumper)
     if (this.x < minX) {
       this.x = minX;
       this.movementAngle = -this.movementAngle * 0.7; // Reflect with damping
-      this.inputDirection = 0;
+      // Set cooldown to block input toward left boundary
+      this.boundaryCooldown = physics.boundaryCooldownTime;
+      this.lastBoundaryHitDirection = -1;
     } else if (this.x > maxX) {
       this.x = maxX;
       this.movementAngle = -this.movementAngle * 0.7; // Reflect with damping
-      this.inputDirection = 0;
+      // Set cooldown to block input toward right boundary
+      this.boundaryCooldown = physics.boundaryCooldownTime;
+      this.lastBoundaryHitDirection = 1;
     }
 
-    // 5. Visual sprite rotation (proportional to movement angle)
+    // 7. Visual sprite rotation (proportional to movement angle)
     this.rotation = this.movementAngle * physics.visualTiltFactor;
   }
 
@@ -111,6 +138,8 @@ export class Player extends Phaser.GameObjects.Sprite {
   resetMovement(): void {
     this.movementAngle = 0;
     this.inputDirection = 0;
+    this.boundaryCooldown = 0;
+    this.lastBoundaryHitDirection = 0;
   }
 
   flash(duration: number): void {

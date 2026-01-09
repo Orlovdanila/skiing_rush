@@ -62,7 +62,15 @@ export const PLAYER_PHYSICS = {
   angleChangeSpeed: 4.0,        // Base radians/sec (higher = sharper arc start)
   minSpeedFactor: 0.2,          // Min speed at max angle (20% = ease-out effect)
   visualTiltFactor: 0.6,        // Multiplier for sprite rotation
-  horizontalSpeedFactor: 1.0    // Multiplier for horizontal speed
+  horizontalSpeedFactor: 1.0,   // Multiplier for horizontal speed
+  boundaryCooldownTime: 250     // ms, input blocked toward boundary after collision
+} as const;
+
+// Boundary configuration (fence asset + player margin)
+export const BOUNDARY_CONFIG = {
+  fenceWidth: 60,               // Width of fence asset (px at baseWidth 1920)
+  playerMargin: 20,             // Additional margin from fence for player
+  baseWidth: 1920               // Reference width for scaling
 } as const;
 
 // Camera configuration
